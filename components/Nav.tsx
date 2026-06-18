@@ -8,7 +8,6 @@ export default function Nav() {
       <div className="nav-links">
         <a href="/#projects">Projects</a>
         <a href="/#about">About</a>
-        <a href="/admin/login">Admin</a>
       </div>
     </nav>
   );
