@@ -69,6 +69,19 @@ insert into storage.buckets(id, name, public)
 values ('portfolio', 'portfolio', true)
 on conflict (id) do update set public = excluded.public;
 
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.admin_users
+    where email = auth.email()
+  );
+$$;
+
 alter table public.admin_users enable row level security;
 alter table public.settings enable row level security;
 alter table public.projects enable row level security;
@@ -79,37 +92,37 @@ drop policy if exists "public can read settings" on public.settings;
 create policy "public can read settings" on public.settings for select using (true);
 
 drop policy if exists "public can read published projects" on public.projects;
-create policy "public can read published projects" on public.projects for select using (is_published = true or exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "public can read published projects" on public.projects for select using (is_published = true or public.is_admin());
 
 drop policy if exists "public can read visible project images" on public.project_images;
-create policy "public can read visible project images" on public.project_images for select using (is_visible = true or exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "public can read visible project images" on public.project_images for select using (is_visible = true or public.is_admin());
 
 drop policy if exists "public can read published external pages" on public.external_pages;
-create policy "public can read published external pages" on public.external_pages for select using (is_published = true or exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "public can read published external pages" on public.external_pages for select using (is_published = true or public.is_admin());
 
 drop policy if exists "admin can read admin users" on public.admin_users;
-create policy "admin can read admin users" on public.admin_users for select using (exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "admin can read admin users" on public.admin_users for select using (public.is_admin());
 
 drop policy if exists "admin can modify settings" on public.settings;
-create policy "admin can modify settings" on public.settings for all using (exists (select 1 from public.admin_users a where a.email = auth.email())) with check (exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "admin can modify settings" on public.settings for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "admin can modify projects" on public.projects;
-create policy "admin can modify projects" on public.projects for all using (exists (select 1 from public.admin_users a where a.email = auth.email())) with check (exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "admin can modify projects" on public.projects for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "admin can modify project images" on public.project_images;
-create policy "admin can modify project images" on public.project_images for all using (exists (select 1 from public.admin_users a where a.email = auth.email())) with check (exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "admin can modify project images" on public.project_images for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "admin can modify external pages" on public.external_pages;
-create policy "admin can modify external pages" on public.external_pages for all using (exists (select 1 from public.admin_users a where a.email = auth.email())) with check (exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "admin can modify external pages" on public.external_pages for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "public read portfolio files" on storage.objects;
 create policy "public read portfolio files" on storage.objects for select using (bucket_id = 'portfolio');
 
 drop policy if exists "admin upload portfolio files" on storage.objects;
-create policy "admin upload portfolio files" on storage.objects for insert with check (bucket_id = 'portfolio' and exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "admin upload portfolio files" on storage.objects for insert with check (bucket_id = 'portfolio' and public.is_admin());
 
 drop policy if exists "admin update portfolio files" on storage.objects;
-create policy "admin update portfolio files" on storage.objects for update using (bucket_id = 'portfolio' and exists (select 1 from public.admin_users a where a.email = auth.email())) with check (bucket_id = 'portfolio' and exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "admin update portfolio files" on storage.objects for update using (bucket_id = 'portfolio' and public.is_admin()) with check (bucket_id = 'portfolio' and public.is_admin());
 
 drop policy if exists "admin delete portfolio files" on storage.objects;
-create policy "admin delete portfolio files" on storage.objects for delete using (bucket_id = 'portfolio' and exists (select 1 from public.admin_users a where a.email = auth.email()));
+create policy "admin delete portfolio files" on storage.objects for delete using (bucket_id = 'portfolio' and public.is_admin());
