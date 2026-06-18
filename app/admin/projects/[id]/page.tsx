@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 
 type Preset = '16:9' | '1:1' | '3:4' | '4:5' | '9:16';
 const presets: Record<Preset, [number, number]> = { '16:9': [1920, 1080], '1:1': [1080, 1080], '3:4': [1080, 1440], '4:5': [1080, 1350], '9:16': [1080, 1920] };
+const cardStyle = { border: '1px solid rgba(20,22,28,.08)', borderRadius: 28, background: 'rgba(255,255,255,.76)', boxShadow: '0 24px 70px rgba(24,28,36,.08)' } as const;
 
 export default function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState('');
@@ -45,7 +46,9 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
   async function uploadPages(files: FileList | File[]) {
     if (!project) return;
     const list = Array.from(files);
+    if (!list.length) return;
     const [w, h] = presets[preset];
+    setMessage(`Uploading ${list.length} file...`);
     for (let i = 0; i < list.length; i++) {
       const file = list[i];
       const path = `projects/${project.id}/pages/${Date.now()}-${i}-${file.name}`;
@@ -53,7 +56,7 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
       if (error) { setMessage(error.message); continue; }
       await supabase.from('project_images').insert({ project_id: project.id, image_path: path, caption: `${preset} · ${w}x${h}`, sort_order: pages.length + i, is_visible: true });
     }
-    setMessage(`${list.length} page uploaded.`);
+    setMessage(`${list.length} page added to ${project.title}.`);
     load();
   }
 
@@ -75,11 +78,38 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
 
   if (!project) return <AdminShell><p className="notice">Loading project...</p></AdminShell>;
   const cover = getPublicStorageUrl(project.cover_image_path) ?? '/project-fallback.svg';
+  const [w, h] = presets[preset];
 
   return (
     <AdminShell>
-      <div className="section-head"><h2>Edit Project</h2><a className="btn" href={`/project/${project.slug}`}>View Public</a></div>
-      <div className="admin-card">
+      <div className="section-head"><div><p className="meta">Selected project</p><h2>{project.title}</h2></div><a className="btn" href={`/project/${project.slug}`}>View Public</a></div>
+
+      <div className="admin-card" style={cardStyle}>
+        <div className="section-head"><div><p className="meta">Project pages</p><h2>Upload & order</h2></div><span className="btn primary">{pages.length} pages</span></div>
+        <div className="resolution-row">
+          <div className="field"><label>Resolution preset</label><select value={preset} onChange={(e) => setPreset(e.target.value as Preset)}>{Object.keys(presets).map((p) => <option key={p}>{p}</option>)}</select></div>
+          <div className="field"><label>Width</label><input value={w} readOnly /></div>
+          <div className="field"><label>Height</label><input value={h} readOnly /></div>
+        </div>
+        <label className="drop-zone" style={{ display: 'block', marginTop: 18, padding: 42, cursor: 'pointer' }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); uploadPages(e.dataTransfer.files); }}>
+          <span className="btn primary">Upload manually to this project</span>
+          <p className="notice" style={{ margin: '16px 0 0' }}>Click here or drag all 1920x1080 pages at once. Files are inserted into this project and can be reordered below.</p>
+          <input type="file" multiple accept="image/*,video/*" style={{ display: 'none' }} onChange={(e) => e.target.files && uploadPages(e.target.files)} />
+        </label>
+        <div className="page-manager-grid" style={{ marginTop: 22 }}>
+          {pages.map((page, index) => {
+            const src = getPublicStorageUrl(page.image_path) || '';
+            const video = /\.(mp4|webm|mov)$/i.test(page.image_path);
+            return <div className={`page-admin-card ${dragId === page.id ? 'dragging' : ''}`} key={page.id} draggable onDragStart={() => setDragId(page.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => dragId && movePage(dragId, page.id)}>
+              {video ? <video src={src} /> : <img src={src} alt="" />}
+              <div className="mini-actions"><span className="meta">Page {index + 1}</span><button className="btn" onClick={() => removePage(page)}>Delete</button></div>
+            </div>;
+          })}
+        </div>
+      </div>
+
+      <div className="admin-card" style={cardStyle}>
+        <div className="section-head"><h2>Project details</h2><button className="btn primary" onClick={save}>Save Project</button></div>
         <div className="form-grid">
           <div className="field"><label>Title</label><input value={project.title} onChange={(e) => setProject({ ...project, title: e.target.value, slug: toSlug(e.target.value) })} /></div>
           <div className="field"><label>Slug</label><input value={project.slug} onChange={(e) => setProject({ ...project, slug: e.target.value })} /></div>
@@ -90,32 +120,8 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="field" style={{ marginTop: 14 }}><label>Short Description</label><textarea value={project.short_description ?? ''} onChange={(e) => setProject({ ...project, short_description: e.target.value })} /></div>
         <div className="field" style={{ marginTop: 14 }}><label>Description</label><textarea value={project.description ?? ''} onChange={(e) => setProject({ ...project, description: e.target.value })} /></div>
-        <div className="field" style={{ marginTop: 14 }}><label>Cover Image</label><img className="thumb" src={cover} alt="" /><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])} /></div>
+        <div className="field" style={{ marginTop: 14 }}><label>1920x1080 Cover Image</label><img className="thumb" src={cover} alt="" /><input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])} /></div>
         {message ? <p className="notice">{message}</p> : null}
-        <button className="btn primary" onClick={save}>Save Project</button>
-      </div>
-
-      <div className="admin-card">
-        <div className="section-head"><h2>Pages</h2><span className="meta">upload manually · reorder</span></div>
-        <div className="resolution-row">
-          <div className="field"><label>Resolution preset</label><select value={preset} onChange={(e) => setPreset(e.target.value as Preset)}>{Object.keys(presets).map((p) => <option key={p}>{p}</option>)}</select></div>
-          <div className="field"><label>Width</label><input value={presets[preset][0]} readOnly /></div>
-          <div className="field"><label>Height</label><input value={presets[preset][1]} readOnly /></div>
-        </div>
-        <label className="drop-zone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); uploadPages(e.dataTransfer.files); }}>
-          <strong>Upload manually</strong><br />Drop images or videos here. Multiple files become ordered project pages automatically.
-          <input type="file" multiple accept="image/*,video/*" style={{ display: 'none' }} onChange={(e) => e.target.files && uploadPages(e.target.files)} />
-        </label>
-        <div className="page-manager-grid" style={{ marginTop: 18 }}>
-          {pages.map((page, index) => {
-            const src = getPublicStorageUrl(page.image_path) || '';
-            const video = /\.(mp4|webm|mov)$/i.test(page.image_path);
-            return <div className={`page-admin-card ${dragId === page.id ? 'dragging' : ''}`} key={page.id} draggable onDragStart={() => setDragId(page.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => dragId && movePage(dragId, page.id)}>
-              {video ? <video src={src} /> : <img src={src} alt="" />}
-              <div className="mini-actions"><span className="meta">Page {index + 1}</span><button className="btn" onClick={() => removePage(page)}>Delete</button></div>
-            </div>;
-          })}
-        </div>
       </div>
     </AdminShell>
   );
