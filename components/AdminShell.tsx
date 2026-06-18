@@ -6,7 +6,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <aside className="admin-side">
         <Link className="brand" href="/admin/dashboard"><span className="brand-mark">B</span><span>Admin</span></Link>
         <div className="admin-menu">
-          <Link href="/admin/external" className="btn primary">Upload Page Externally</Link>
           <Link href="/admin/dashboard">Dashboard</Link>
           <Link href="/admin/projects">Projects</Link>
           <Link href="/admin/settings">Settings</Link>
