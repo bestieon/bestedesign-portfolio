@@ -4,7 +4,7 @@ import AdminShell from '@/components/AdminShell';
 import { getSupabaseBrowser, getPublicStorageUrl } from '@/lib/supabase';
 import { toSlug } from '@/lib/slug';
 import type { Project, ProjectImage } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Preset = '16:9' | '1:1' | '3:4' | '4:5' | '9:16';
 type LocalPreview = { name: string; url: string; type: string };
@@ -22,10 +22,51 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [localPreviews, setLocalPreviews] = useState<LocalPreview[]>([]);
+  const dragCounter = useRef(0);
+  const dragOffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = getSupabaseBrowser();
 
   useEffect(() => { params.then((p) => setId(p.id)); }, [params]);
   useEffect(() => { if (id) load(); }, [id]);
+
+  function clearDragTimer() {
+    if (dragOffTimer.current) clearTimeout(dragOffTimer.current);
+    dragOffTimer.current = null;
+  }
+
+  function activateDrop() {
+    clearDragTimer();
+    setDropActive(true);
+  }
+
+  function handleDropEnter(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    dragCounter.current += 1;
+    activateDrop();
+  }
+
+  function handleDropOver(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    activateDrop();
+  }
+
+  function handleDropLeave(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) {
+      clearDragTimer();
+      dragOffTimer.current = setTimeout(() => setDropActive(false), 120);
+    }
+  }
+
+  function handleDropFiles(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    dragCounter.current = 0;
+    clearDragTimer();
+    setDropActive(false);
+    uploadPages(e.dataTransfer.files);
+  }
 
   async function load() {
     const { data } = await supabase.from('projects').select('*').eq('id', id).single();
@@ -114,8 +155,8 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
           <div className="field"><label>Width</label><input value={w} readOnly /></div>
           <div className="field"><label>Height</label><input value={h} readOnly /></div>
         </div>
-        <label className="drop-zone" style={{ position: 'relative', display: 'block', marginTop: 18, padding: 42, cursor: 'pointer', transform: dropActive ? 'scale(1.01)' : 'none', borderColor: dropActive ? '#111' : undefined, background: dropActive ? 'rgba(255,255,255,.96)' : undefined }} onDragEnter={(e) => { e.preventDefault(); setDropActive(true); }} onDragOver={(e) => { e.preventDefault(); setDropActive(true); }} onDragLeave={(e) => { e.preventDefault(); setDropActive(false); }} onDrop={(e) => { e.preventDefault(); setDropActive(false); uploadPages(e.dataTransfer.files); }}>
-          {dropActive && <div style={{ position: 'absolute', inset: 12, borderRadius: 24, display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.88)', border: '1px solid rgba(0,0,0,.12)', boxShadow: '0 30px 80px rgba(24,28,36,.14)', zIndex: 2 }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: 42, marginBottom: 8 }}>↓</div><strong>Drop files here</strong><p className="notice">Images and videos will be added to this selected project.</p></div></div>}
+        <label className="drop-zone" style={{ position: 'relative', display: 'block', marginTop: 18, padding: 42, cursor: 'pointer', transform: dropActive ? 'scale(1.01)' : 'none', borderColor: dropActive ? '#111' : undefined, background: dropActive ? 'rgba(255,255,255,.96)' : undefined }} onDragEnter={handleDropEnter} onDragOver={handleDropOver} onDragLeave={handleDropLeave} onDrop={handleDropFiles} onDragEnd={() => { dragCounter.current = 0; clearDragTimer(); setDropActive(false); }}>
+          {dropActive && <div style={{ pointerEvents: 'none', position: 'absolute', inset: 12, borderRadius: 24, display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.88)', border: '1px solid rgba(0,0,0,.12)', boxShadow: '0 30px 80px rgba(24,28,36,.14)', zIndex: 2 }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: 42, marginBottom: 8 }}>↓</div><strong>Drop files here</strong><p className="notice">Images and videos will be added to this selected project.</p></div></div>}
           <span className="btn primary">Bulk upload pages to this project</span>
           <p className="notice" style={{ margin: '16px 0 0' }}>Click here or drag all 1920x1080 pages at once. The system uploads them as ordered project pages and shows realistic previews below.</p>
           <input type="file" multiple accept="image/*,video/*" style={{ display: 'none' }} onChange={(e) => e.target.files && uploadPages(e.target.files)} />
