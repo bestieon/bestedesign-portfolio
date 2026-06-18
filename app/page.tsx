@@ -7,13 +7,13 @@ const covers = {
 };
 
 const projects = [
-  ['Soft Halo Lighting', 'Lighting Design', 'A quiet lighting object with soft relief shadows.', covers.light],
-  ['Aero Surface Concept', 'Automotive Design', 'A clean mobility form study with calm reflections.', covers.car],
-  ['Quiet Home Interface', 'Product Design', 'A minimal home product with tactile control details.', covers.product]
+  ['Soft Halo Lighting', 'Lighting Design', 'A quiet lighting object with soft relief shadows.', covers.light, '/project/soft-halo-lighting'],
+  ['Aero Surface Concept', 'Automotive Design', 'A clean mobility form study with calm reflections.', covers.car, '/project/aero-surface-concept'],
+  ['Quiet Home Interface', 'Product Design', 'A minimal home product with tactile control details.', covers.product, '/project/quiet-home-interface']
 ];
 
-function Art({ bg, children }: { bg: string; children?: React.ReactNode }) {
-  return <div style={{ position: 'absolute', inset: 0, background: bg }}>{children}</div>;
+function Art({ bg }: { bg: string }) {
+  return <div style={{ position: 'absolute', inset: 0, background: bg }} />;
 }
 
 export default function Home() {
@@ -27,19 +27,19 @@ export default function Home() {
             <p className="hero-note">A quiet white portfolio surface for product, lighting and automotive design.</p>
           </div>
           <div className="project-showcase">
-            <a className="showcase-main" href="#projects">
+            <a className="showcase-main" href="/project/soft-halo-lighting" style={{ aspectRatio: '16 / 9', minHeight: 'auto' }}>
               <Art bg={covers.light} />
               <div className="project-info-float"><div><span className="project-pill">Lighting Design · 2026</span><h2>Soft Halo Lighting</h2></div><span className="btn primary">EXPLORE PORTFOLIO</span></div>
             </a>
             <div className="showcase-stack">
-              {projects.slice(1).map((p) => <a className="showcase-stack-card" href="#projects" key={p[0]}><Art bg={p[3]} /><div className="stack-label"><h3>{p[0]}</h3><p>{p[2]}</p></div></a>)}
+              {projects.slice(1).map((p) => <a className="showcase-stack-card" href={p[4]} key={p[0]} style={{ aspectRatio: '16 / 9', minHeight: 'auto' }}><Art bg={p[3]} /><div className="stack-label"><h3>{p[0]}</h3><p>{p[2]}</p></div></a>)}
             </div>
           </div>
         </section>
         <section id="projects" className="section container">
-          <div className="section-head"><h2>Projects</h2><p className="meta">soft hover · clean selection · admin editable</p></div>
+          <div className="section-head"><h2>Projects</h2><p className="meta">1920x1080 covers · clean selection · admin editable</p></div>
           <div className="project-grid">
-            {projects.map((p) => <a className="project-card" href="#" key={p[0]}><Art bg={p[3]} /><div className="project-body"><div className="meta">{p[1]} · 2026</div><h3>{p[0]}</h3><p>{p[2]}</p></div></a>)}
+            {projects.map((p) => <a className="project-card" href={p[4]} key={p[0]} style={{ aspectRatio: '16 / 9', minHeight: 'auto', height: 'auto' }}><Art bg={p[3]} /><div className="project-body"><div className="meta">{p[1]} · 2026</div><h3>{p[0]}</h3><p>{p[2]}</p></div></a>)}
           </div>
         </section>
       </main>
