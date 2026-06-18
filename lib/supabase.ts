@@ -1,23 +1,18 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kbrvvuauvqfsfyjxtihr.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_m0JnIGtBZUs84jMIwtYN3A_Hg5AicDf';
+
 export function getSupabaseBrowser() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return createBrowserClient(supabaseUrl, supabaseAnonKey);
 }
 
 export function getSupabasePublic() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } }
-  );
+  return createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
 }
 
 export function getPublicStorageUrl(path: string | null | undefined) {
   if (!path) return null;
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  return `${base}/storage/v1/object/public/portfolio/${path}`;
+  return `${supabaseUrl}/storage/v1/object/public/portfolio/${path}`;
 }
