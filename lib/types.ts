@@ -39,3 +39,5 @@ export type ExternalPage = {
   is_published: boolean;
   created_at: string;
 };
+
+export type ResolutionPreset = '16:9' | '1:1' | '3:4' | '4:5' | '9:16';
